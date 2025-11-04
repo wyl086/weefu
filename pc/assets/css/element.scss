@@ -1,0 +1,45 @@
+.el-tabs {
+    .el-tabs__nav-wrap::after {
+        height: 1px;
+    }
+
+    .el-tabs__nav-scroll {
+        padding-left: 20px;
+
+        .el-tabs__item {
+            font-weight: normal;
+            font-size: 16px;
+            line-height: 45px;
+            height: 45px;
+        }
+    }
+}
+
+
+.el-message-box__message {
+    white-space: pre-line;
+}
+
+body .el-tabs__content {
+    overflow: inherit;
+}
+
+body .el-popover {
+    min-width: 80px;
+}
+
+.pagination .el-pagination.is-background .btn-prev,
+.pagination .el-pagination.is-background .btn-next,
+.pagination .el-pagination.is-background .el-pager li {
+    background: #fff;
+    padding: 0 10px;
+}
+
+.el-carousel {
+    .el-carousel__arrow {
+        width: 40 px;
+        height: 40 px;
+        background-color: rgba(0, 0, 0, 0.3);
+		font-size: 22px;
+    }
+}

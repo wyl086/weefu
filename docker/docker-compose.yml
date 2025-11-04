@@ -1,0 +1,128 @@
+#+----------------------------------------------------------------------
+# | multshop开源商城系统
+# +----------------------------------------------------------------------
+# | 欢迎阅读学习系统程序代码，建议反馈是我们前进的动力
+# | gitee下载：https://gitee.com/multshop_gitee
+# | github下载：https://github.com/multshop-github
+# | 访问官网：https://www.multshop.cn
+# | 访问社区：https://home.multshop.cn
+# | 访问手册：http://doc.multshop.cn
+# | 微信公众号：multshop技术社区
+# | multshop系列产品在gitee、github等公开渠道开源版本可免费商用，未经许可不能去除前后端官方版权标识
+# |  multshop系列产品收费版本务必购买商业授权，购买去版权授权后，方可去除前后端官方版权标识
+# | 禁止对系统程序代码以任何目的，任何形式的再发布
+# | multshop团队版权所有并拥有最终解释权
+# +----------------------------------------------------------------------
+# | author: multshop.cn.team
+# +----------------------------------------------------------------------
+
+# 注意：本文件假定 docker-compose.yml 位于项目子目录（与 ../server ../web 相对）
+# 若位置不同，请调整 ../server ../web 的相对路径或改为绝对路径。
+name: multshop
+services:
+
+  nginx:
+    container_name: multshop-nginx
+    image: nginx:stable-alpine
+    restart: always
+    depends_on:
+      - php
+    volumes:
+      - ../server:/server:ro                               # 应用代码（只读，避免误写）
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/ssl/:/www/ssl:ro
+      - nginx_logs:/var/log/nginx                          # 使用命名卷存放日志（更可控）
+    networks:
+      - multshop
+    ports:
+      - "80:80"
+      - "443:443"
+    # 小心: compose 的 depends_on 不会等待健康检查通过，仅保证启动顺序
+
+  php:
+    build:
+      context: .
+      dockerfile: ./config/php/Dockerfile
+    container_name: multshop-php7.2.4-fpm
+    # image: php:7.2.4-fpm
+    restart: always
+    working_dir: /server
+    volumes:
+      - ../server:/server:cached
+      - ./config/php/php.ini:/usr/local/etc/php/php.ini:ro
+    networks:
+      - multshop
+    ports:
+      - "9004:9000"
+    # 可选：将容器内文件写入映射用户 uid/gid（在 .env 中设置 LOCAL_USER_ID/LOCAL_GRP_ID）
+    user: "${LOCAL_USER_ID:-1000}:${LOCAL_GRP_ID:-1000}"
+    # 推荐将 PROJECT files 的 owner 与宿主用户一致以减少权限问题
+
+  mysql:
+    container_name: multshop-mysql
+    image: mysql:5.7.29
+    restart: always
+    environment:
+      MYSQL_ROOT_HOSTS: "%"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-multshop}"
+      # MYSQL_HOST: "%"
+      MYSQL_USER: "${MYSQL_USER:-multshop}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-multshop_pass}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./config/mysql/mysqld.cnf:/etc/mysql/my.cnf:ro
+    networks:
+      multshop:
+        ipv4_address: 172.16.238.10 # 为mysql容器指定一个固定的IP
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    container_name: multshop-redis
+    image: redis:5.0.5
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - multshop
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  node:
+    container_name: multshop-node
+    image: node:10.15.3
+    restart: unless-stopped
+    working_dir: /web
+    volumes:
+      - ../web:/web:cached
+    networks:
+      - multshop
+    tty: true
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
+  redis_data:
+  composer_cache:
+  nginx_logs:
+
+networks:
+  multshop:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.238.0/24 # 定义IP地址段+
