@@ -1,0 +1,3 @@
+[submodule "server"]
+	path = server
+	url = git@codeup.aliyun.com:68ad4744ddcdb4ded6021e3d/multshop/multshop-server.git
